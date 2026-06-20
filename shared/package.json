@@ -1,0 +1,10 @@
+{
+  "name": "feature-flag-system-shared",
+  "version": "1.0.0",
+  "description": "Shared interfaces and evaluator logic for Feature Flag System",
+  "main": "evaluator.ts",
+  "types": "types.ts",
+  "dependencies": {
+    "murmurhash-js": "^1.0.0"
+  }
+}

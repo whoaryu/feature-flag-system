@@ -1,0 +1,48 @@
+Build a production-grade feature flag platform from scratch, similar to LaunchDarkly.
+
+I want a backend-first system with:
+- Node.js + Express + TypeScript
+- PostgreSQL for durable storage
+- Redis for evaluation caching and fast reads
+- React admin dashboard
+- JWT auth for admin access
+
+Core capabilities:
+- Boolean flags and multivariate flags (string, number, JSON)
+- Targeting rules based on user attributes such as userId, email, country, plan, and custom context fields
+- Percentage rollout with deterministic bucketing so the same user consistently receives the same variant for a given flag
+- Environment-specific configuration for dev, staging, and production
+- Real-time flag updates to clients through SSE or WebSocket-style push
+- Audit log for every change, including who changed what and when
+- Webhook trigger when a flag is updated
+
+Architecture expectations:
+- Separate API, service, repository, and evaluation layers
+- Keep the evaluation engine pure and testable
+- Cache the full flag definition in Redis and invalidate on updates
+- Use a stable hashing strategy for rollout bucketing
+- Ensure rule evaluation is ordered and deterministic
+
+Deliverables:
+- Database schema
+- API endpoints for CRUD on flags, rules, environments, and audit logs
+- Evaluation engine
+- Admin dashboard screens
+- Example client SDK usage
+- Basic tests for evaluation logic and rollout correctness
+Audit log + webhook on flag change
+Enterprise-grade requirement that shows B2B product thinking
+
+Gaps to add 🔶
+Rule ordering + conflict resolution
+Your spec says "ordered and deterministic" but doesn't specify how conflicts are resolved. Add: first matching rule wins, with an explicit fallback (default variant). Mention this in the spec — it's a question you'll get asked.
+→ "What happens when a user matches two rules?" is a guaranteed interview question
+Flag kill switch / emergency off
+Add a hard-off state that bypasses all rules and targeting — useful when a bad flag is in prod. This is what Meta's Gatekeeper has as a top-level override. One extra field in the schema, one check at the top of evaluation.
+→ Shows operational maturity — "what do you do when a flag causes an incident?"
+Evaluation analytics — flag exposure tracking
+Log each flag evaluation (flag_id, variant_returned, user_id, timestamp) async. This powers "N users saw variant B" in the dashboard. Without this, your A/B testing story is incomplete — you can roll out but can't measure.
+→ Connects feature flags to actual A/B testing results — much stronger resume narrative
+Client SDK with local caching + stale-while-revalidate
+Your spec mentions "example client SDK usage" but doesn't describe it. Add: SDK caches flags in localStorage/memory with TTL, uses SSE to get updates, falls back to last-known values if the server is unreachable. This is the reliability story.
+→ "What happens when your flag service goes down?" — now you have an answer

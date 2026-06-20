@@ -1,0 +1,71 @@
+ Critical gaps — AI will guess wrong on these
+🔴
+No database schema defined — AI will invent one
+Your spec says "database schema" as a deliverable but gives zero column-level detail. The AI will create its own schema and you'll refactor it 3 times. Define it upfront: table names, key columns, foreign keys, what's nullable.
+→ Add the exact schema before handing this over (see "What to add" below)
+🔴
+Hashing strategy unspecified — AI will use crypto.createHash (wrong)
+You said "use a stable hashing strategy for rollout bucketing" but didn't name it. The AI will use Node's crypto module which is cryptographically strong but 10x slower than needed. You want murmurhash-js. The AI won't know this preference.
+→ Add: "Use murmurhash-js for bucketing. Hash input = userId + ':' + flagKey. Result % 100 gives bucket 0–99."
+🔴
+SSE architecture completely unspecified
+"Real-time flag updates through SSE" — the AI doesn't know: which endpoint serves SSE, how Redis pub/sub connects to it, what the event payload looks like, or how clients reconnect on disconnect. It'll build something that works in dev and breaks in production.
+→ Add: endpoint path, Redis channel naming convention, event payload shape, reconnect handling
+🟡
+Evaluation engine — "pure and testable" but no input/output contract
+The AI will build an evaluation function but you'll disagree on its interface. Define it: what goes in (flag definition + user context), what comes out (variant value + reason code), what "reason" values exist (RULE_MATCH, ROLLOUT, FALLBACK, KILLED).
+→ Add the function signature and reason enum before coding starts
+What to add to your spec
+1. Core table definitions
+Add this to the spec — exact column names matter so the AI doesn't invent its own:
+-- flags
+id, project_id, key (unique), name, type (bool|string|number|json),
+is_killed (bool default false), created_at, updated_at
+
+-- flag_environments
+id, flag_id, environment (dev|staging|prod), enabled (bool), default_variant
+
+-- flag_rules
+id, flag_environment_id, priority (int, lower = evaluated first),
+attribute, operator (eq|neq|in|gt|lt|contains), value, variant
+
+-- flag_variants
+id, flag_id, name, value (jsonb)
+
+-- audit_log
+id, flag_id, actor_id, action, before_snapshot (jsonb), after_snapshot (jsonb), timestamp
+
+-- flag_evaluations (async insert)
+id, flag_id, variant_returned, user_id, timestamp
+2. Evaluation engine contract
+Add this exact function signature to your spec:
+type EvalResult = {
+  variant: string,
+  value: unknown,
+  reason: 'KILLED' | 'RULE_MATCH' | 'ROLLOUT' | 'FALLBACK'
+}
+
+// Pure function — no DB calls, no side effects
+function evaluate(flag: FlagDefinition, userCtx: UserContext): EvalResult
+
+// Rule resolution: first matching rule wins.
+// If no rule matches and user is in rollout bucket → ROLLOUT.
+// If neither → FALLBACK (default_variant).
+// If flag.is_killed === true → KILLED, skip all rules.
+3. SSE architecture spec
+Add this section to avoid the AI inventing its own approach:
+SSE endpoint: GET /api/v1/sdk/stream?envKey=:key
+Redis channel: flags:{projectId}:{environment}
+On flag update: PUBLISH flags:{projectId}:{env} JSON.stringify({ flagKey, updatedAt })
+SSE event payload: event: flag-update, data: { flagKey, updatedAt }
+Client reconnect: use EventSource built-in reconnect (Last-Event-ID header)
+SDK fallback: if SSE disconnects, serve from localStorage cache until reconnect
+4. Bucketing implementation
+Specify the exact implementation so the AI doesn't use the wrong hash function:
+npm install murmurhash-js
+import murmurhash from 'murmurhash-js'
+
+function getBucket(userId: string, flagKey: string): number {
+  const seed = `${userId}:${flagKey}`
+  return murmurhash.v3(seed) % 100  // returns 0–99
+}
