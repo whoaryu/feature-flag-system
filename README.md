@@ -6,6 +6,14 @@ The system is designed with a **clean repository/provider pattern**. It uses in-
 
 ---
 
+## 📸 Demo Screenshots
+
+| Dashboard Overview | Targeting Rules & Rollout | Audit Logs & Live Events |
+| :---: | :---: | :---: |
+| ![Dashboard Overview](ffs1.png) | ![Targeting Rules & Rollout](ffs2.png) | ![Create a new feature flag](ffs3.png) |
+
+---
+
 ## 🏗️ Project Architecture Layout
 
 The codebase is organized into clean, decoupled modules:
