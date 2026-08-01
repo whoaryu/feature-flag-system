@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:3001/api/v1';
+const BASE_URL = 'https://feature-flag-system-gszd.onrender.com/api/v1';
 
 function getHeaders() {
   const token = localStorage.getItem('ff_admin_token');
