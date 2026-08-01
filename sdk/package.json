@@ -1,0 +1,38 @@
+{
+  "name": "feature-flag-client-sdk",
+  "version": "1.0.0",
+  "description": "Universal Feature Flag client SDK for JavaScript and TypeScript apps",
+  "main": "./dist/sdk.js",
+  "module": "./dist/sdk.mjs",
+  "types": "./dist/sdk.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/sdk.d.ts",
+      "require": "./dist/sdk.js",
+      "import": "./dist/sdk.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "feature-flags",
+    "feature-toggles",
+    "gradual-rollout",
+    "killswitch",
+    "targeting"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "murmurhash-js": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.2",
+    "typescript": "^5.3.3"
+  }
+}
