@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   api 
 } from './services/api';
@@ -19,7 +19,7 @@ import {
   Sliders, 
   Sparkles, 
   ChevronRight, 
-  Info,
+  // Info,
   HelpCircle,
   Copy,
   Activity
@@ -56,19 +56,18 @@ function murmurhash3_32_gc(key: string, seed = 0): number {
   }
   
   let k1 = 0;
-  switch (remainder) {
-    case 3:
-      k1 ^= (key.charCodeAt(i + 2) & 0xff) << 16;
-      // fallthrough
-    case 2:
-      k1 ^= (key.charCodeAt(i + 1) & 0xff) << 8;
-      // fallthrough
-    case 1:
-      k1 ^= (key.charCodeAt(i) & 0xff);
-      k1 = (((k1 & 0xffff) * c1) + ((((k1 >>> 16) * c1) & 0xffff) << 16)) & 0xffffffff;
-      k1 = (k1 << 15) | (k1 >>> 17);
-      k1 = (((k1 & 0xffff) * c2) + ((((k1 >>> 16) * c2) & 0xffff) << 16)) & 0xffffffff;
-      h1 ^= k1;
+  if (remainder === 3) {
+    k1 ^= (key.charCodeAt(i + 2) & 0xff) << 16;
+  }
+  if (remainder >= 2) {
+    k1 ^= (key.charCodeAt(i + 1) & 0xff) << 8;
+  }
+  if (remainder >= 1) {
+    k1 ^= (key.charCodeAt(i));
+    k1 = (((k1 & 0xffff) * c1) + ((((k1 >>> 16) * c1) & 0xffff) << 16)) & 0xffffffff;
+    k1 = (k1 << 15) | (k1 >>> 17);
+    k1 = (((k1 & 0xffff) * c2) + ((((k1 >>> 16) * c2) & 0xffff) << 16)) & 0xffffffff;
+    h1 ^= k1;
   }
   
   h1 ^= key.length;
@@ -189,6 +188,10 @@ export default function App() {
   const [projects, setProjects] = useState<any[]>([]);
   const [activeProjectId, setActiveProjectId] = useState('');
   const [flags, setFlags] = useState<any[]>([]);
+  const hasSimulatorFlags = flags.some(f => f.key === 'show-beta-banner') &&
+                            flags.some(f => f.key === 'pricing-discount-tier') &&
+                            flags.some(f => f.key === 'new-checkout-flow') &&
+                            flags.some(f => f.key === 'dark-mode-preview');
   const [selectedFlag, setSelectedFlag] = useState<any>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -1389,7 +1392,7 @@ export default function App() {
                             {/* Total warning check */}
                             {(() => {
                               const weights = selectedFlag.environments[selectedEnv].rolloutWeights || {};
-                              const total = Object.values(weights).reduce((a: any, b: any) => a + b, 0);
+                              const total = Object.values(weights).reduce((a: any, b: any) => a + b, 0) as number;
                               return (
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '12px' }}>
                                   <span style={{ color: total === 100 ? 'var(--color-success)' : 'var(--color-warning)', fontWeight: 600 }}>
@@ -1451,7 +1454,7 @@ export default function App() {
                               style={{ 
                                 height: '100%', 
                                 background: 'var(--accent-secondary)', 
-                                width: `${Math.min(100, (count / Object.values(flagStats[selectedEnv]).reduce((a: any, b: any) => a + b, 0) as number) * 100)}%` 
+                                width: `${Math.min(100, (count / (Object.values(flagStats[selectedEnv]).reduce((a: any, b: any) => a + b, 0) as number)) * 100)}%` 
                               }}
                             ></div>
                           </div>
