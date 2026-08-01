@@ -1,95 +1,97 @@
-# Feature Flag System with Gradual Rollout
+# Feature Flag & Targeting System
 
-An enterprise-grade, backend-first feature flag and targeting engine (similar to LaunchDarkly) built from scratch. It features sub-5ms evaluations, percentage rollouts, attribute-based targeting rules, real-time push updates via Server-Sent Events (SSE), and a modern React dashboard.
+An enterprise-grade, real-time feature flag and targeting engine (similar to LaunchDarkly) built from scratch. It features sub-5ms evaluations, percentage rollouts, attribute-based targeting rules, real-time push updates via Server-Sent Events (SSE), and a modern React dashboard.
 
-The system is designed with a **clean repository/provider pattern**. It uses in-memory database and pub/sub providers by default, but includes SQL schemas and Postgres/Redis repositories so switching to a production setup is simple.
+The system is deployed and active in the cloud, utilizing a serverless Neon PostgreSQL database, an Express backend API on Render, an Admin Console on Vercel, and a client SDK published on NPM.
 
 ---
 
-## 📸 Demo Screenshots
+## 📸 Demo Console Screenshots
 
-| Dashboard Overview | Targeting Rules & Rollout | Audit Logs & Live Events |
+| Dashboard Overview | Targeting Rules & Rollout | Live Simulator Playground |
 | :---: | :---: | :---: |
-| ![Dashboard Overview](ffs1.png) | ![Targeting Rules & Rollout](ffs2.png) | ![Create a new feature flag](ffs3.png) |
+| ![Dashboard Overview](ffs1.png) | ![Targeting Rules & Rollout](ffs2.png) | ![Live Simulator Playground](ffs3.png) |
 
 ---
 
-## 🏗️ Project Architecture Layout
+## 🌍 Deployed Services
 
-The codebase is organized into clean, decoupled modules:
-
-1. **`shared/`**
-   - Contains type definitions and the pure, deterministic targeting evaluation engine with MurmurHash v3 percentage rollout bucketing.
-2. **`backend/`**
-   - Node.js + Express + TypeScript API server.
-   - Separate controllers, services, repositories, and authentication layers.
-   - Includes PostgreSQL SQL schemas ([schema.sql](backend/schema.sql)), active SQL adapters, and in-memory mock repository fallbacks.
-   - Real-time Server-Sent Events (SSE) broadcasting and Redis Pub/Sub caching.
-3. **`sdk/`**
-   - Reusable client SDK featuring LocalStorage caching, Server-Sent Events real-time sync, local engine evaluations, and background analytics batch reporting.
-4. **`frontend/`**
-   - A modern React (Vite + TypeScript) Single Page App dashboard built using **Vanilla CSS variables** (harmonious dark mode, glassmorphic elements, inline rule builder, and audit logs viewer).
+* **Admin Dashboard (Vercel)**: Hosted live in the cloud. Log in with your admin credentials or sign up for a new account.
+* **Backend API Engine (Render)**: `https://feature-flag-system-gszd.onrender.com`
+* **Database (Neon)**: Fully managed serverless PostgreSQL instance.
+* **Client SDK (NPM)**: Published as `feature-flag-client-sdk` for instant installation.
 
 ---
 
-## 🚀 Getting Started (Quick Start)
+## 📦 Client SDK Integration
 
-### 1. Spin Up the Backend API Server
-By default, the server runs in **in-memory database and event mode** (no Docker/Postgres/Redis required to test).
+Install the package directly into your application:
+```bash
+npm install feature-flag-client-sdk
+```
+
+### Quick Usage Example
+Initialize the client with your SDK environment key and point it to the live backend URL:
+
+```typescript
+import { FeatureFlagClient } from 'feature-flag-client-sdk';
+
+const client = new FeatureFlagClient('YOUR_SDK_KEY', {
+  baseUrl: 'https://feature-flag-system-gszd.onrender.com',
+  enableStream: true // Enable real-time updates via Server-Sent Events
+});
+
+// Bootstrap configurations and listen for updates
+await client.initialize();
+
+// Define user attributes
+const user = {
+  userId: 'user-premium-101',
+  email: 'user@company.com',
+  plan: 'premium',
+  country: 'US'
+};
+
+// Evaluate instantly (sub-1ms local check)
+const showBeta = client.evaluate('show-beta-banner', user, false);
+
+if (showBeta.value) {
+  console.log('Rendering new beta banner!');
+}
+
+// Receive push notifications from the dashboard in real-time
+client.onUpdate(() => {
+  console.log('Flags updated on dashboard! Refetching latest states...');
+});
+```
+
+---
+
+## ⚙️ How targeting works under the hood
+
+1. **Local Evaluation Engine**: When the client app calls `.evaluate()`, it doesn't make any network requests. Instead, it checks rules locally against cached flags retrieved during bootstrap.
+2. **Real-time SSE Sync**: If you change flag states, edit target rules, or hit the **Emergency Kill Switch** on the Vercel dashboard, a Server-Sent Events (SSE) notification is pushed to all active SDK client instances in sub-seconds.
+3. **Deterministic Percentage Rollouts**: Rollouts use MurmurHash v3: `murmurhash.v3(userId + ':' + flagKey) % 100`. This ensures the same user always gets the same variant consistently without storing mapping states in a database.
+4. **Buffered Analytics**: Evaluation events are queued in the background and flushed to the backend API every few seconds to feed the dashboard A/B metrics and exposure charts.
+
+---
+
+## 🛠️ Local Development & Testing
+
+If you want to run the codebase locally:
+
+### 1. Run the Backend API Server
+Configure a local `.env` file in `/backend` using `.env.example` as a template:
 ```bash
 cd backend
 npm install
 npm run dev
 ```
 
-### 2. Run the Evaluator Unit Tests
-Validate the pure evaluation logic (boolean flags, multivariate rule resolution order, custom operators, and MurmurHash rollout distribution):
-```bash
-cd backend
-npm run test
-```
-
-### 3. Run the Client SDK Demo Integration
-Simulates a live application using the client SDK, displaying local evaluations (standard vs premium users) and flushing analytics back to the server:
-```bash
-cd backend
-npx ts-node ../sdk/demo-client.ts
-```
-
-### 4. Start the Admin Dashboard Console
-Launch the Vite React console (runs on port `3000`):
+### 2. Start the Admin Dashboard Console
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser:
-* **Username:** `admin@example.com`
-* **Password:** `admin123`
-
----
-
-## ⚙️ Production Database & Cache Setup
-
-To toggle from in-memory mode to **PostgreSQL** and **Redis**, spin up the services using Docker:
-```bash
-docker-compose up -d
-```
-Then, create a `.env` file in the `backend/` directory:
-```env
-DB_TYPE=postgres
-CACHE_TYPE=redis
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/flagdb
-REDIS_URL=redis://localhost:6379
-JWT_SECRET=feature-flag-system-secret-key-999
-PORT=3001
-```
-*(Make sure to run the SQL schema DDL inside `backend/schema.sql` on your PostgreSQL database first).*
-
----
-
-## 🌟 Key Technical Details to Know
-
-* **Deterministic Bucketing:** Rollouts use MurmurHash v3: `murmurhash.v3(userId + ':' + flagKey) % 100`. This ensures the same user always gets the same variant for a flag without storing mapping state in a database.
-* **Emergency Kill Switch:** A top-level override switch bypasses rules immediately and serves the default fallback value in production during incidents.
-* **Server-Sent Events (SSE):** Real-time push stream updates propagate configuration edits from the database to active client SDK instances in sub-second intervals without polling.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
